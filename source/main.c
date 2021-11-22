@@ -2,12 +2,18 @@
  *  Partner(s) Name: N/A
  *	Lab Section: 022
  *	Assignment: Final Custom Project
- *	Exercise Description: EEPROM and LCD Custom Character
+ *	Exercise Description: Joystick
  *
  *	I acknowledge all content contained herein, excluding template or example
  *	code, is my own original work.
  *  
- *  Demo Link: https://drive.google.com/file/d/1cbfGRmzglm8k5zVxBTdjddRwTSf8hf61/view?usp=sharing
+ *  Demo Link: https://drive.google.com/file/d/11ZW6Lu3F8vsDwNr4Jkd-ea_2P1ZiHGcE/view?usp=sharing
+
+    Below is a link to a second demo for EEPROM and LCD Custom Character
+    I didn't use it since I don't know if using 
+    EEPROM library will deduct me points or not.
+    You can see that I've used Custom characters in the first demo video
+    https://drive.google.com/file/d/1cbfGRmzglm8k5zVxBTdjddRwTSf8hf61/view?usp=sharing
  */
 
 #include <avr/io.h>
