@@ -63,6 +63,12 @@ void ADC_init() {
     //          whenever the previous conversion completes.
 }
 
+unsigned short ADC_Channel(unsigned char ch) {
+    ADMUX = ch;
+    for(unsigned char p = 0; p < 30; p++) asm("nop");
+    return ADC;
+}
+
 typedef struct _task{
     // Tasks should have members that include: state, period,
     //a measurement of elapsed time, and a function pointer.
@@ -122,7 +128,7 @@ void Tick() {
         case start:
         state = release;
         // i=eeprom_r();
-        i = eeprom_read_byte(0x5F);
+        i=eeprom_read_byte(0x5F);
         if(i>arrsize) i=0;
         break;
         case press:
@@ -142,6 +148,32 @@ void Tick() {
         }
     }
 
+}
+
+unsigned short x, y;
+void TickJ() {
+    x=ADC_Channel(0x01);
+    
+    y=ADC_Channel(0x00);
+    unsigned char tmpB = 0;
+    if(x<384) tmpB |= 1<<1;
+    else if(x>640) tmpB |= 1<<0;
+    if(y<384) tmpB |= 1<<3;
+    else if(y>640) tmpB |= 1<<2;
+
+    for(unsigned char j = 0; j < 4; j++) {
+        LCD_Cursor(6-j);
+        LCD_WriteData('0'+x%10);
+        x/=10;
+    }
+    for(unsigned char j = 0; j < 4; j++) {
+        LCD_Cursor(16-j);
+        LCD_WriteData('0'+y%10);
+        y/=10;
+    }
+    LCD_Cursor(32);
+
+    PORTB = tmpB;
 }
 
 int main(void) {
@@ -164,10 +196,22 @@ int main(void) {
     LCD_WriteData(2);
     LCD_Cursor(19);
     LCD_WriteData(3);
+
+    LCD_Cursor(1);
+    LCD_WriteData('X');
+    LCD_Cursor(2);
+    LCD_WriteData(':');
+
+    LCD_Cursor(11);
+    LCD_WriteData('Y');
+    LCD_Cursor(12);
+    LCD_WriteData(':');
+    ADC_init();
     while(1) {
-        Tick();
-        LCD_Cursor(1);
-        LCD_WriteData(arr[i]);
+        // Tick();
+        // LCD_Cursor(1);
+        // LCD_WriteData(arr[i]);
+        TickJ();
         while(!TimerFlag);
         TimerFlag = 0;
     }
