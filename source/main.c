@@ -100,15 +100,17 @@ unsigned char eeprom_r() {
 }
 
 */
+unsigned char currMaze = 0;
 
-unsigned char maze[4][8] = {{0,0,0,0,0,0,0,0},
-                        {1, 36, 36, 36, 0, 66, 60, 130},
+unsigned char maze[3][8] = {
                         {1, 117, 20, 214, 16, 87, 81, 92},
-                        {8, 106, 42, 238, 8, 226, 79, 0}};
+                        {8, 106, 42, 238, 8, 226, 79, 0},
+                        {0, 36, 36, 36, 0, 66, 60, 0}
+                    };
 
 unsigned char customCharacter[3][8] = {
    {0x0E, 0x1F, 0x11, 0x11, 0x1F, 0x1F, 0x1F, 0x1B},
-   {0x00, 0x0A, 0x0A, 0x00, 0x11, 0x0E, 0x00, 0x00},
+   {0x00, 0x0A, 0x0A, 0x00, 0x0E, 0x11, 0x00, 0x00},
    {0x03, 0x06, 0x0C, 0x0F, 0x1E, 0x06, 0x0C, 0x18}
 };
 void LCD_CreateCustom() {
@@ -151,19 +153,36 @@ void LCD_CreateCustom() {
 //     }
 //     return state;
 // }
-
+signed char time = 0;
+unsigned char px, py;
 unsigned char game_started;
+unsigned char highScore;
+unsigned char stopTime;
+void DisplayScore() {
+    LCD_Cursor(29);
+    LCD_WriteData(highScore/10 + '0');
+    LCD_Cursor(30);
+    LCD_WriteData(highScore%10 + '0');
+}
 enum GameState {g_start, waitForStart, inGame};
 int gameTick(int state) {
+
     switch(state) {
         case g_start:
         state = waitForStart;
         game_started = 0;
+        currMaze = 0;
+        stopTime = 1;
+        highScore = eeprom_read_byte(0x5F);
+        if(highScore>30) highScore = 0; 
+        LCD_DisplayString(1,"L:Start,R:Reset  High Score: ");
+        DisplayScore();
         break;
         case waitForStart:
         if(~PINA&0x08) {
             state = inGame;
             game_started = 1;
+            stopTime = 0;
         } else {
             state = waitForStart;
         }
@@ -172,6 +191,41 @@ int gameTick(int state) {
         if(~PINA&0x04) {
             state = waitForStart;
             game_started = 0;
+            px=7;
+            py=0;
+            stopTime = 1;
+            currMaze = 0;
+            time = 30;
+            LCD_DisplayString(1,"L:Start,R:Reset  High Score: ");
+            DisplayScore();
+        } else if(currMaze>=2) {
+            //win
+            currMaze = 0;
+            if(time > (signed char)highScore) {
+                eeprom_write_byte(0x5F,time);
+                highScore = time;
+            }
+            LCD_ClearScreen();
+            LCD_DisplayString(1,"You Win!!");
+            LCD_Cursor(10);
+            LCD_WriteData(1);
+            LCD_Cursor(11);
+            LCD_WriteData(3);
+            stopTime = 1;
+            game_started = 0;
+            LCD_DisplayString(1,"High Score: ");
+            DisplayScore();
+        } else if(time<=0) {
+            LCD_ClearScreen();
+            LCD_DisplayString(2,"You Lose!      L:Start,R:Reset");
+            LCD_Cursor(1);
+            LCD_WriteData(2);
+            stopTime = 1;
+            game_started = 0;
+        } else if(px==0 && py==7) {
+            currMaze++;
+            px=7;
+            py=0;
         }
         break;
     }
@@ -179,32 +233,42 @@ int gameTick(int state) {
 }
 
 
-unsigned char time = 0;
-enum TimeState {t_start, timing};
+enum TimeState {t_start, timing, stop};
 int TimerTick(int state) {
     switch(state) {
         case t_start:
-        time = 0;
+        time = 30;
         state = timing;
         break;
         case timing:
         if(game_started==0) {
-            time = 0;
+            time = 30;
+        } else if(stopTime==0) {
+            time--;
         } else {
-            time++;
+            state = stop;
         }
+        break;
+        case stop:
+        if(stopTime) {
+            state = stop;
+        } else {
+            time = 30;
+        }
+        break;
     }
     return state;
 }
 
-unsigned char currMaze = 1;
 unsigned short x, y;
-unsigned char px, py;
 enum JoystickState {j_start, mid, up, down, left, right} jstate;
 int JoystickTick(int state) {
-    x=ADC_Channel(0x01);    
-    y=ADC_Channel(0x00);
-
+    if(game_started) {
+        x=ADC_Channel(0x01);    
+        y=ADC_Channel(0x00);
+    } else {
+        x=y=500;
+    }
     // display values of x and y direction
     // for(unsigned char j = 0; j < 4; j++) {
     //     LCD_Cursor(8-j);
@@ -337,12 +401,6 @@ int main(void) {
     LCD_CreateCustom();
     LCD_ClearScreen();
 
-    LCD_Cursor(17);
-    LCD_WriteData(1);
-    LCD_Cursor(18);
-    LCD_WriteData(2);
-    LCD_Cursor(19);
-    LCD_WriteData(3);
 
     ADC_init();
 
@@ -350,7 +408,7 @@ int main(void) {
     tasks[i].state = g_start;
     tasks[i].period = 100;
     tasks[i].elapsedTime = tasks[i].period;
-    tasks[i].TickFct = &TimerTick;
+    tasks[i].TickFct = &gameTick;
     i++;
     tasks[i].state = t_start;
     tasks[i].period = 1000;
@@ -358,7 +416,7 @@ int main(void) {
     tasks[i].TickFct = &TimerTick;
     i++;
     tasks[i].state = j_start;
-    tasks[i].period = 200;
+    tasks[i].period = 150;
     tasks[i].elapsedTime = tasks[i].period;
     tasks[i].TickFct = &JoystickTick;
     i++;
