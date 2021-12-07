@@ -2,12 +2,12 @@
  *  Partner(s) Name: N/A
  *	Lab Section: 022
  *	Assignment: Final Custom Project
- *	Exercise Description: Joystick
+ *	Exercise Description: Final Demo
  *
  *	I acknowledge all content contained herein, excluding template or example
  *	code, is my own original work.
  *  
- *  Demo Link: https://drive.google.com/file/d/1cbfGRmzglm8k5zVxBTdjddRwTSf8hf61/view?usp=sharing
+ *  Demo Link: 
  */
 
 #include <avr/io.h>
@@ -62,7 +62,7 @@ void ADC_init() {
 
 unsigned short ADC_Channel(unsigned char ch) {
     ADMUX = ch;
-    for(unsigned char p = 0; p < 16; p++) asm("nop");
+    for(unsigned char p = 0; p < 10; p++) asm("nop");
     return ADC;
 }
 
@@ -74,8 +74,8 @@ typedef struct _task{
     unsigned long elapsedTime;  //Time elapsed since last task tick
     int (*TickFct)(int);        //Task tick function
 } task;
-unsigned char numTasks = 2;
-task tasks[2];
+unsigned char numTasks = 4;
+task tasks[4];
 
 
 /*
@@ -151,6 +151,52 @@ void LCD_CreateCustom() {
 //     }
 //     return state;
 // }
+
+unsigned char game_started;
+enum GameState {g_start, waitForStart, inGame};
+int gameTick(int state) {
+    switch(state) {
+        case g_start:
+        state = waitForStart;
+        game_started = 0;
+        break;
+        case waitForStart:
+        if(~PINA&0x08) {
+            state = inGame;
+            game_started = 1;
+        } else {
+            state = waitForStart;
+        }
+        break;
+        case inGame:
+        if(~PINA&0x04) {
+            state = waitForStart;
+            game_started = 0;
+        }
+        break;
+    }
+    return state;
+}
+
+
+unsigned char time = 0;
+enum TimeState {t_start, timing};
+int TimerTick(int state) {
+    switch(state) {
+        case t_start:
+        time = 0;
+        state = timing;
+        break;
+        case timing:
+        if(game_started==0) {
+            time = 0;
+        } else {
+            time++;
+        }
+    }
+    return state;
+}
+
 unsigned char currMaze = 1;
 unsigned short x, y;
 unsigned char px, py;
@@ -232,7 +278,6 @@ int JoystickTick(int state) {
 #define CLR_BIT(p,i) ((p) &= ~(1 << (i)))
 #define GET_BIT(p,i) ((p) & (1 << (i)))
 
-unsigned char other[] = {16, 8, 16, 8, 16, 8, 129, 16};
 unsigned char k = 0;
 int LEDMatrixTick(int state) {
     unsigned char temp;
@@ -302,6 +347,16 @@ int main(void) {
     ADC_init();
 
     unsigned char i = 0;
+    tasks[i].state = g_start;
+    tasks[i].period = 100;
+    tasks[i].elapsedTime = tasks[i].period;
+    tasks[i].TickFct = &TimerTick;
+    i++;
+    tasks[i].state = t_start;
+    tasks[i].period = 1000;
+    tasks[i].elapsedTime = tasks[i].period;
+    tasks[i].TickFct = &TimerTick;
+    i++;
     tasks[i].state = j_start;
     tasks[i].period = 200;
     tasks[i].elapsedTime = tasks[i].period;
