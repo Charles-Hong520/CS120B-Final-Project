@@ -62,7 +62,7 @@ void ADC_init() {
 
 unsigned short ADC_Channel(unsigned char ch) {
     ADMUX = ch;
-    for(unsigned char p = 0; p < 10; p++) asm("nop");
+    for(unsigned char p = 0; p < 16; p++) asm("nop");
     return ADC;
 }
 
@@ -100,6 +100,12 @@ unsigned char eeprom_r() {
 }
 
 */
+
+unsigned char maze[4][8] = {{0,0,0,0,0,0,0,0},
+                        {1, 36, 36, 36, 0, 66, 60, 130},
+                        {1, 117, 20, 214, 16, 87, 81, 92},
+                        {8, 106, 42, 238, 8, 226, 79, 0}};
+
 unsigned char customCharacter[3][8] = {
    {0x0E, 0x1F, 0x11, 0x11, 0x1F, 0x1F, 0x1F, 0x1B},
    {0x00, 0x0A, 0x0A, 0x00, 0x11, 0x0E, 0x00, 0x00},
@@ -145,75 +151,129 @@ void LCD_CreateCustom() {
 //     }
 //     return state;
 // }
-
+unsigned char currMaze = 1;
 unsigned short x, y;
+unsigned char px, py;
+enum JoystickState {j_start, mid, up, down, left, right} jstate;
 int JoystickTick(int state) {
     x=ADC_Channel(0x01);    
-    y=ADC_Channel(0x00); y = 1023-y;
+    y=ADC_Channel(0x00);
 
-    //display values of x and y direction
-    for(unsigned char j = 0; j < 4; j++) {
-        LCD_Cursor(8-j);
-        LCD_WriteData('0'+x%10);
-        x/=10;
+    // display values of x and y direction
+    // for(unsigned char j = 0; j < 4; j++) {
+    //     LCD_Cursor(8-j);
+    //     LCD_WriteData('0'+x%10);
+    //     x/=10;
+    // }
+    // for(unsigned char j = 0; j < 4; j++) {
+    //     LCD_Cursor(16-j);
+    //     LCD_WriteData('0'+y%10);
+    //     y/=10;
+    // }
+    // LCD_Cursor(32);
+    switch(state) {
+        case j_start:
+        state = mid;
+        px=7;
+        py=0;
+        break;
+        case mid:
+        if(x<200 && px<7) {
+            unsigned char wall = maze[currMaze][py];
+            if((wall&(1<<(px+1)))==0) {
+                state = left;
+                px++;
+            }
+        } else if(x>850 && px>0) {
+            unsigned char wall = maze[currMaze][py];
+            if((wall&(1<<(px-1)))==0) {
+                state = right;
+                px--;
+            }
+        } else if(y<200 && py>0) {
+            unsigned char wall = maze[currMaze][py-1];
+            if((wall&(1<<(px)))==0) {
+                state = up;
+                py--;
+            }
+        } else if(y>850 && py<7) {
+            unsigned char wall = maze[currMaze][py+1];
+            if((wall&(1<<(px)))==0) {
+                state = down;
+                py++;
+            }
+        } else state = mid;
+        break;
+        case left:
+        if(x<200) state = left;
+        else state = mid;
+        break;
+        case right:
+        if(x>850) state = right;
+        else state = mid;
+        break;
+        case up:
+        if(y<200) state = up;
+        else state = mid;
+        break;
+        case down:
+        if(y>850) state = down;
+        else state = mid;
+        break;
     }
-    for(unsigned char j = 0; j < 4; j++) {
-        LCD_Cursor(16-j);
-        LCD_WriteData('0'+y%10);
-        y/=10;
-    }
-    LCD_Cursor(32);
-
     return state;
 }
+
+
 #define SER 0
 #define RCLK 1
 #define SRCLK 2
 #define SET_BIT(p,i) ((p) |= (1 << (i)))
 #define CLR_BIT(p,i) ((p) &= ~(1 << (i)))
 #define GET_BIT(p,i) ((p) & (1 << (i)))
-unsigned char maze[][] = {{129, 36, 36, 36, 0, 66, 60, 130},
-                        {1, 117, 20, 214, 16, 87, 81, 92},
-                        {8, 106, 42, 238, 8, 226, 79, 0}};
+
 unsigned char other[] = {16, 8, 16, 8, 16, 8, 129, 16};
 unsigned char k = 0;
 int LEDMatrixTick(int state) {
-        unsigned char temp;
-        //store red
-        temp = ~other[k];
-        for(unsigned char j = 0; j < 8; j++) {    
-            //store value
-            if(temp&0x80) SET_BIT(PORTB, SER);
-            else CLR_BIT(PORTB,SER);
+    unsigned char temp;
+    //store red
+    if(py==k) temp = (1<<(px));
+    else temp = 0;
+    temp = ~temp;
+    for(unsigned char j = 0; j < 8; j++) {    
+        //store value
+        if(temp&0x01) SET_BIT(PORTB, SER);
+        else CLR_BIT(PORTB,SER);
 
-            //pulse serial clock
-            SET_BIT(PORTB,SRCLK);
-            CLR_BIT(PORTB,SRCLK);
+        //pulse serial clock
+        SET_BIT(PORTB,SRCLK);
+        CLR_BIT(PORTB,SRCLK);
 
-            //shift temp over
-            temp <<= 1;
-        }
+        //shift temp over
+        temp >>= 1;
+    }
 
-        //store green
-        temp = ~maze[k];
-        for(unsigned char j = 0; j < 8; j++) {
+    //store green
+    temp = ~maze[currMaze][k];
+    for(unsigned char j = 0; j < 8; j++) {
 
-            //store value
-            if(temp&0x80) SET_BIT(PORTB, SER);
-            else CLR_BIT(PORTB,SER);
+        //store value
+        if(temp&0x01) SET_BIT(PORTB, SER);
+        else CLR_BIT(PORTB,SER);
 
-            //pulse serial clock
-            SET_BIT(PORTB,SRCLK);
-            CLR_BIT(PORTB,SRCLK);
+        //pulse serial clock
+        SET_BIT(PORTB,SRCLK);
+        CLR_BIT(PORTB,SRCLK);
 
-            //shift value of val over
-            temp <<= 1;
-        }
+        //shift value of val over
+        temp >>= 1;
+    }
 
-        PORTD = 1<<k; //store row
-        //pulse the latch
-        SET_BIT(PORTB,RCLK);
-        CLR_BIT(PORTB,RCLK);
+    PORTD = 1<<k; //store row
+    //pulse the latch
+    SET_BIT(PORTB,RCLK);
+    CLR_BIT(PORTB,RCLK);
+    //increment row
     k++;
     if(k==8) k=0;
     return state;
@@ -242,8 +302,8 @@ int main(void) {
     ADC_init();
 
     unsigned char i = 0;
-    tasks[i].state = 0;
-    tasks[i].period = 300;
+    tasks[i].state = j_start;
+    tasks[i].period = 200;
     tasks[i].elapsedTime = tasks[i].period;
     tasks[i].TickFct = &JoystickTick;
     i++;
