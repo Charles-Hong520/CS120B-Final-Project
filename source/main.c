@@ -62,7 +62,7 @@ void ADC_init() {
 
 unsigned short ADC_Channel(unsigned char ch) {
     ADMUX = ch;
-    for(unsigned char p = 0; p < 30; p++) asm("nop");
+    for(unsigned char p = 0; p < 10; p++) asm("nop");
     return ADC;
 }
 
@@ -176,8 +176,10 @@ unsigned char smile[] = {129, 36, 36, 36, 0, 66, 60, 129};
 unsigned char k = 0;
 int LEDMatrixTick(int state) {
         unsigned char val = ~smile[k];
-        unsigned temp = 1<<(k);
+        unsigned char temp;
+
         //store column
+        temp = 1<<k;
         for(unsigned char j = 0; j < 8; j++) {    
             //store value
             if(temp&1) SET_BIT(PORTB, SER);
@@ -210,12 +212,13 @@ int LEDMatrixTick(int state) {
         //pulse the latch
         SET_BIT(PORTB,RCLK);
         CLR_BIT(PORTB,RCLK);
-    k = (k+1)%8;
+    k++;
+    if(k==8) k=0;
     return state;
 }
 
 int main(void) {
-    DDRA = 0x00; PORTA = 0xFF; 
+    DDRA = 0xF0; PORTA = 0x0F; 
     DDRB = 0xFF; PORTB = 0x00; 
     DDRC = 0xFF; PORTC = 0x00; 
     DDRD = 0xFF; PORTD = 0x00; 
@@ -238,12 +241,12 @@ int main(void) {
 
     unsigned char i = 0;
     tasks[i].state = 0;
-    tasks[i].period = 400;
+    tasks[i].period = 200;
     tasks[i].elapsedTime = tasks[i].period;
     tasks[i].TickFct = &JoystickTick;
     i++;
     tasks[i].state = 0;
-    tasks[i].period = GCDPeriod;
+    tasks[i].period = 2;
     tasks[i].elapsedTime = tasks[i].period;
     tasks[i].TickFct = &LEDMatrixTick;
 
