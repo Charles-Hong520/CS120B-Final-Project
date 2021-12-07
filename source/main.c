@@ -7,7 +7,7 @@
  *	I acknowledge all content contained herein, excluding template or example
  *	code, is my own original work.
  *  
- *  Demo Link: 
+ *  Demo Link: https://drive.google.com/file/d/1gdwfyb-8gH2mDGFBX-W8k5T85cCem0cX/view?usp=sharing
  */
 
 #include <avr/io.h>
@@ -175,7 +175,7 @@ int gameTick(int state) {
         currMaze = 0;
         stopTime = 1;
         highScore = eeprom_read_byte(0x5F);
-        if(highScore>30) highScore = 0; 
+        if(highScore>20) highScore = 0; 
         LCD_DisplayString(1,"L:Start,R:Reset  High Score: ");
         DisplayScore();
         break;
@@ -196,7 +196,7 @@ int gameTick(int state) {
             py=0;
             stopTime = 1;
             currMaze = 0;
-            time = 30;
+            time = 20;
             LCD_DisplayString(1,"L:Start,R:Reset  High Score: ");
             DisplayScore();
         } else if(currMaze==2) {
@@ -208,14 +208,15 @@ int gameTick(int state) {
             }
             LCD_ClearScreen();
             
+
+            stopTime = 1;
+            game_started = 0;
+            LCD_DisplayString(3,"You Win!!      High Score: ");
+            DisplayScore();
             LCD_Cursor(1);
             LCD_WriteData(1);
             LCD_Cursor(2);
             LCD_WriteData(3);
-            stopTime = 1;
-            game_started = 0;
-            LCD_DisplayString(1,"You Win!!        High Score: ");
-            DisplayScore();
             currMaze = 3;
         } else if(time<=0) {
             LCD_ClearScreen();
@@ -239,12 +240,12 @@ enum TimeState {t_start, timing, stop};
 int TimerTick(int state) {
     switch(state) {
         case t_start:
-        time = 30;
+        time = 20;
         state = timing;
         break;
         case timing:
         if(game_started==0) {
-            time = 30;
+            time = 20;
         } else if(stopTime==0) {
             time--;
         } else {
@@ -255,7 +256,7 @@ int TimerTick(int state) {
         if(stopTime) {
             state = stop;
         } else {
-            time = 30;
+            time = 20;
         }
         break;
     }
