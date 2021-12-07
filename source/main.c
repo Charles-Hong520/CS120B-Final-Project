@@ -102,9 +102,10 @@ unsigned char eeprom_r() {
 */
 unsigned char currMaze = 0;
 
-unsigned char maze[3][8] = {
+unsigned char maze[4][8] = {
                         {1, 117, 20, 214, 16, 87, 81, 92},
                         {8, 106, 42, 238, 8, 226, 79, 0},
+                        {0, 36, 36, 36, 0, 66, 60, 0},
                         {0, 36, 36, 36, 0, 66, 60, 0}
                     };
 
@@ -198,7 +199,7 @@ int gameTick(int state) {
             time = 30;
             LCD_DisplayString(1,"L:Start,R:Reset  High Score: ");
             DisplayScore();
-        } else if(currMaze>=2) {
+        } else if(currMaze==2) {
             //win
             currMaze = 0;
             if(time > (signed char)highScore) {
@@ -206,18 +207,19 @@ int gameTick(int state) {
                 highScore = time;
             }
             LCD_ClearScreen();
-            LCD_DisplayString(1,"You Win!!");
-            LCD_Cursor(10);
+            
+            LCD_Cursor(1);
             LCD_WriteData(1);
-            LCD_Cursor(11);
+            LCD_Cursor(2);
             LCD_WriteData(3);
             stopTime = 1;
             game_started = 0;
-            LCD_DisplayString(1,"High Score: ");
+            LCD_DisplayString(1,"You Win!!        High Score: ");
             DisplayScore();
+            currMaze = 3;
         } else if(time<=0) {
             LCD_ClearScreen();
-            LCD_DisplayString(2,"You Lose!      L:Start,R:Reset");
+            LCD_DisplayString(2,"You Lose!      R:Reset");
             LCD_Cursor(1);
             LCD_WriteData(2);
             stopTime = 1;
