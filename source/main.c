@@ -172,17 +172,18 @@ int JoystickTick(int state) {
 #define SET_BIT(p,i) ((p) |= (1 << (i)))
 #define CLR_BIT(p,i) ((p) &= ~(1 << (i)))
 #define GET_BIT(p,i) ((p) & (1 << (i)))
-unsigned char smile[] = {129, 36, 36, 36, 0, 66, 60, 129};
+unsigned char maze[][] = {{129, 36, 36, 36, 0, 66, 60, 130},
+                        {1, 117, 20, 214, 16, 87, 81, 92},
+                        {8, 106, 42, 238, 8, 226, 79, 0}};
+unsigned char other[] = {16, 8, 16, 8, 16, 8, 129, 16};
 unsigned char k = 0;
 int LEDMatrixTick(int state) {
-        unsigned char val = ~smile[k];
         unsigned char temp;
-
-        //store column
-        temp = 1<<k;
+        //store red
+        temp = ~other[k];
         for(unsigned char j = 0; j < 8; j++) {    
             //store value
-            if(temp&1) SET_BIT(PORTB, SER);
+            if(temp&0x80) SET_BIT(PORTB, SER);
             else CLR_BIT(PORTB,SER);
 
             //pulse serial clock
@@ -190,15 +191,15 @@ int LEDMatrixTick(int state) {
             CLR_BIT(PORTB,SRCLK);
 
             //shift temp over
-            temp >>= 1;
+            temp <<= 1;
         }
 
-        //store row actual color
-        temp = val;
+        //store green
+        temp = ~maze[k];
         for(unsigned char j = 0; j < 8; j++) {
 
             //store value
-            if(temp&1) SET_BIT(PORTB, SER);
+            if(temp&0x80) SET_BIT(PORTB, SER);
             else CLR_BIT(PORTB,SER);
 
             //pulse serial clock
@@ -206,9 +207,10 @@ int LEDMatrixTick(int state) {
             CLR_BIT(PORTB,SRCLK);
 
             //shift value of val over
-            temp >>= 1;
+            temp <<= 1;
         }
 
+        PORTD = 1<<k; //store row
         //pulse the latch
         SET_BIT(PORTB,RCLK);
         CLR_BIT(PORTB,RCLK);
@@ -222,7 +224,7 @@ int main(void) {
     DDRB = 0xFF; PORTB = 0x00; 
     DDRC = 0xFF; PORTC = 0x00; 
     DDRD = 0xFF; PORTD = 0x00; 
-    unsigned long GCDPeriod = 1;
+    unsigned long GCDPeriod = 2;
     TimerOn();
     TimerSet(GCDPeriod);
 
@@ -241,12 +243,12 @@ int main(void) {
 
     unsigned char i = 0;
     tasks[i].state = 0;
-    tasks[i].period = 200;
+    tasks[i].period = 300;
     tasks[i].elapsedTime = tasks[i].period;
     tasks[i].TickFct = &JoystickTick;
     i++;
     tasks[i].state = 0;
-    tasks[i].period = 2;
+    tasks[i].period = GCDPeriod;
     tasks[i].elapsedTime = tasks[i].period;
     tasks[i].TickFct = &LEDMatrixTick;
 
